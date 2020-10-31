@@ -39,6 +39,7 @@ Las otras dos, nettwo, netone, solo se podrían comunicar através de netone
 #include "ns3/yans-wifi-channel.h"
 #include "ns3/mobility-model.h"
 #include "ns3/internet-stack-helper.h"
+#include "ns3/olsr-helper.h"
 
 using namespace ns3;
 
@@ -80,8 +81,33 @@ int main (int argc, char *argv[])
   mainNodeContainer.Create(numNodesNetOne);
   NS_LOG_INFO("MAIN: "<< numNodesNetOne <<" nodes created");
 
+  //Intalacion de dispositivos de red wifi en modo adhoc, capa fisica y capa mac a los nodos
+  WifiHelper wifi;
+  WifiMacHelper mac;
+  mac.SetType ("ns3::AdhocWifiMac");
+  wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager",
+                                "DataMode", StringValue ("OfdmRate54Mbps"));
+  YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default ();
+  YansWifiChannelHelper wifiChannel = YansWifiChannelHelper::Default ();
+  wifiPhy.SetChannel (wifiChannel.Create ());
+  NetDeviceContainer mainDeviceContainer = wifi.Install (wifiPhy, mac, mainNodeContainer);
 
 
+  //Intalacion de pila de protocolos a los dispositivos de red
+  NS_LOG_INFO ("MAIN:Enabling OLSR routing on all nodes");
+  OlsrHelper olsr;
+  InternetStackHelper internet;
+  internet.SetRoutingHelper (olsr);
+  //se establace al protocolo olsr como protocolo de enrutamiento para la red.
+  //Este funciona con tablas de enrutamiento en redes adhoc moviles
+  internet.Install (mainNodeContainer);
+
+  //Asignacion de direcciones ip
+  NS_LOG_INFO ("MAIN:setting up ip adresses on all nodes");
+  Ipv4AddressHelper ipAddrs;
+  ipAddrs.SetBase ("192.168.0.0", "255.255.255.0");
+  //cada dispositivo de red tendra direcciones 192.168.0.1, 192.168.0.2....192.168.0.254
+  ipAddrs.Assign (mainDeviceContainer);
 
 
   
