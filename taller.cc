@@ -204,7 +204,7 @@ int main (int argc, char *argv[])
   //                                                                       //
   ///////////////////////////////////////////////////////////////////////////
 
-  NS_LOG_INFO ("TWO:Creating net 2 atached by main net by node" << mainTwoAttachmentIndex);
+  NS_LOG_INFO ("TWO:Creating net 2 atached by main net by node " << mainTwoAttachmentIndex);
   //Creamos un contenedor temporal donde se guardan los nuevos nodos 
   NodeContainer newNodesNetTwo;
   //Creamos numNodesNetTwo - 1 nuevos nodos, el -1 es porque habrá un nodo adicional que es el de
@@ -215,6 +215,7 @@ int main (int argc, char *argv[])
 
   Simulator::Run ();
   Simulator::Destroy ();
+  wifiPhy.EnablePcap ("taller", mainDeviceContainer, true);
 
 
   return 0;
