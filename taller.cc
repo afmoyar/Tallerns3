@@ -174,6 +174,7 @@ int main (int argc, char *argv[])
 
 
   /******Transmision de informacion de un nodo a otro*****/
+  /*
   TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
   Ptr<Socket> recvSink = Socket::CreateSocket (mainNodeContainer.Get (0), tid);
   InetSocketAddress local = InetSocketAddress (Ipv4Address::GetAny (), 80);
@@ -194,6 +195,7 @@ int main (int argc, char *argv[])
   Simulator::ScheduleWithContext (source->GetNode ()->GetId (),
                                   Seconds (1.0), &GenerateTraffic,
                                   source, packetSize, numPackets, interPacketInterval);
+*/
 /******Transmision de informacion de un nodo a otro*****/
 
 
@@ -212,10 +214,81 @@ int main (int argc, char *argv[])
   newNodesNetTwo.Create (numNodesNetTwo - 1);
   // Creacion del contenedor de nodos para la red
   NodeContainer secondNodeContainer (mainNodeContainer.Get (mainTwoAttachmentIndex), newNodesNetTwo);
+  NS_LOG_INFO("TWO: "<< secondNodeContainer.GetN() <<" nodes created");
+
+  //Intalacion de dispositivos de red wifi en modo adhoc, capa fisica y capa mac a los nodos
+  WifiHelper wifi2;
+  WifiMacHelper mac2;
+  mac2.SetType ("ns3::AdhocWifiMac");
+  wifi2.SetRemoteStationManager ("ns3::ConstantRateWifiManager",
+                                "DataMode", StringValue ("OfdmRate54Mbps"));
+  YansWifiPhyHelper wifiPhy2 = YansWifiPhyHelper::Default ();
+  YansWifiChannelHelper wifiChannel2 = YansWifiChannelHelper::Default ();
+  wifiPhy2.SetChannel (wifiChannel2.Create ());
+  NetDeviceContainer secondDeviceContainer = wifi2.Install (wifiPhy2, mac2, newNodesNetTwo);
+
+
+  //Intalacion de pila de protocolos a los dispositivos de red
+  NS_LOG_INFO ("TWO:Enabling OLSR routing on all nodes");
+  OlsrHelper olsr2;
+  InternetStackHelper internet2;
+  internet2.SetRoutingHelper (olsr2);
+  //se establace al protocolo olsr como protocolo de enrutamiento para la red.
+  //Este funciona con tablas de enrutamiento en redes adhoc moviles
+  internet2.Install (newNodesNetTwo);
+
+  //Asignacion de direcciones ip
+  NS_LOG_INFO ("MAIN:setting up ip adresses on all nodes");
+  Ipv4AddressHelper ipAddrs2;
+  ipAddrs2.SetBase ("192.168.1.0", "255.255.255.0");
+  //cada dispositivo de red tendra direcciones 192.168.1.1, 192.168.1.2....192.168.1.254
+  ipAddrs2.Assign (secondDeviceContainer);
+
+
+  MobilityHelper mobilityTwo;
+  Ptr<ListPositionAllocator> subnetAlloc =
+  CreateObject<ListPositionAllocator> ();
+  for (uint32_t j = 0; j < newNodesNetTwo.GetN (); ++j)
+  {
+
+        subnetAlloc->Add (Vector (0.0, j, 0.0));
+  }
+  mobilityTwo.PushReferenceMobilityModel (mainNodeContainer.Get (mainTwoAttachmentIndex));
+  mobilityTwo.SetPositionAllocator (subnetAlloc);
+  /*
+  mobilityTwo.SetMobilityModel ("ns3::ConstantPositionMobilityModel",
+                                 "Bounds", RectangleValue (Rectangle (-10, 10, -10, 10)),
+                                 "Speed", StringValue ("ns3::ConstantRandomVariable[Constant=3]"),
+                                 "Pause", StringValue ("ns3::ConstantRandomVariable[Constant=0.4]"));
+  mobilityTwo.Install (newNodesNetTwo);
+  */
+  /**************comunicacion entre clusters****************************/
+  TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
+  Ptr<Socket> recvSink = Socket::CreateSocket (mainNodeContainer.Get (1), tid);
+  InetSocketAddress local = InetSocketAddress (Ipv4Address::GetAny (), 80);
+  recvSink->Bind (local);
+  recvSink->SetRecvCallback (MakeCallback (&ReceivePacket));
+
+  Ptr<Socket> source = Socket::CreateSocket (mainNodeContainer.Get (2), tid);
+  InetSocketAddress remote = InetSocketAddress (Ipv4Address ("255.255.255.255"), 80);
+  source->SetAllowBroadcast (true);
+  source->Connect (remote);
+
+  // Tracing
+  wifiPhy.EnablePcap ("taller", mainDeviceContainer);
+
+  // Output what we are doing
+  NS_LOG_INFO ("Testing " << numPackets  << " packets sent");
+
+  Simulator::ScheduleWithContext (source->GetNode ()->GetId (),
+                                  Seconds (5.0), &GenerateTraffic,
+                                  source, packetSize, numPackets, interPacketInterval);
+  
+/**************comunicacion entre clusters****************************/
+
 
   Simulator::Run ();
   Simulator::Destroy ();
-  wifiPhy.EnablePcap ("taller", mainDeviceContainer, true);
 
 
   return 0;
