@@ -23,7 +23,6 @@ La red de mayor jerarquia sera netone
 Las otras dos, nettwo, netone, solo se podrían comunicar através de netone
 El numero minimo de nodos de cada red puede tener es de dos. En cada red habra almenos
 una cabeza de cluster
-
 */
 
 
@@ -48,8 +47,10 @@ una cabeza de cluster
 #include "ns3/packet-sink-helper.h"
 #include "ns3/csma-helper.h"
 #include "ns3/animation-interface.h"
+#include "ns3/netanim-module.h"
 
 using namespace ns3;
+AnimationInterface * pAnim = 0;
 
 NS_LOG_COMPONENT_DEFINE ("taller");
 void ReceivePacket (Ptr<Socket> socket)
@@ -180,18 +181,14 @@ int main (int argc, char *argv[])
   InetSocketAddress local = InetSocketAddress (Ipv4Address::GetAny (), 80);
   recvSink->Bind (local);
   recvSink->SetRecvCallback (MakeCallback (&ReceivePacket));
-
   Ptr<Socket> source = Socket::CreateSocket (mainNodeContainer.Get (1), tid);
   InetSocketAddress remote = InetSocketAddress (Ipv4Address ("255.255.255.255"), 80);
   source->SetAllowBroadcast (true);
   source->Connect (remote);
-
   // Tracing
   wifiPhy.EnablePcap ("wifi-simple-adhoc", mainDeviceContainer);
-
   // Output what we are doing
   NS_LOG_INFO ("Testing " << numPackets  << " packets sent");
-
   Simulator::ScheduleWithContext (source->GetNode ()->GetId (),
                                   Seconds (1.0), &GenerateTraffic,
                                   source, packetSize, numPackets, interPacketInterval);
@@ -244,6 +241,22 @@ int main (int argc, char *argv[])
   //cada dispositivo de red tendra direcciones 192.168.1.1, 192.168.1.2....192.168.1.254
   ipAddrs2.Assign (secondDeviceContainer);
 
+  //La red adhoc es movil, por lo tanto se definen atributos de movilidad a los nodos
+  MobilityHelper mobilityB;
+  //Primero se define la posicion de cada nodo en una grilla
+  mobilityB.SetPositionAllocator ("ns3::GridPositionAllocator",
+                                 "MinX", DoubleValue (70.0),
+                                 "MinY", DoubleValue (70.0),
+                                 "DeltaX", DoubleValue (40.0),
+                                 "DeltaY", DoubleValue (40.0),
+                                 "GridWidth", UintegerValue (5),
+                                 "LayoutType", StringValue ("RowFirst"));
+  //Luego se les indica a los nodos en que forma se pueden mover
+  mobilityB.SetMobilityModel ("ns3::RandomDirection2dMobilityModel",
+                             "Bounds", RectangleValue (Rectangle (-500, 500, -500, 500)),
+                             "Speed", StringValue ("ns3::ConstantRandomVariable[Constant=2]"),
+                             "Pause", StringValue ("ns3::ConstantRandomVariable[Constant=0.2]"));
+  mobilityB.Install(newNodesNetTwo);
 
   MobilityHelper mobilityTwo;
   Ptr<ListPositionAllocator> subnetAlloc =
@@ -286,6 +299,7 @@ int main (int argc, char *argv[])
   
 /**************comunicacion entre clusters****************************/
 
+  pAnim = new AnimationInterface("animfile.xml");
 
   Simulator::Run ();
   Simulator::Destroy ();
@@ -293,4 +307,3 @@ int main (int argc, char *argv[])
 
   return 0;
 }
-
