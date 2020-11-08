@@ -52,7 +52,7 @@ una cabeza de cluster
 using namespace ns3;
 AnimationInterface * pAnim = 0;
 uint32_t bridge2_id;
-
+uint32_t bridge3_id;
 NS_LOG_COMPONENT_DEFINE ("taller");
 
 
@@ -73,25 +73,38 @@ static void GenerateTraffic (Ptr<Socket> socket, uint32_t pktSize,
 
 void ReceivePacket (Ptr<Socket> socket)
 {
+  bool retransmit = false;
   while (socket->Recv ())
     {
+      retransmit = false;
       uint32_t id_of_reciving_node = socket->GetNode()->GetId();
       NS_LOG_UNCOND (id_of_reciving_node <<" Received one packet!");
+      TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
+      Ptr<Socket> source = Socket::CreateSocket (socket->GetNode(), tid);
+      InetSocketAddress remote = InetSocketAddress (Ipv4Address ("255.255.255.255"), 80);
       if(id_of_reciving_node == bridge2_id){
-        NS_LOG_UNCOND ("This is cluster head");
+        NS_LOG_UNCOND ("This is cluster head for net 2");
+        //retransmitir en broadcast en la red principal
+        retransmit = true;
+        remote = InetSocketAddress (Ipv4Address ("192.168.0.255"), 80);
         
-        //retransmitiendo
-        TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
-        Ptr<Socket> source = Socket::CreateSocket (socket->GetNode(), tid);
-        InetSocketAddress remote = InetSocketAddress (Ipv4Address ("192.168.0.255"), 80);
+      }else if(id_of_reciving_node == bridge3_id){
+        NS_LOG_UNCOND ("This is cluster head for net 3");
+        //retransmitir en broadcast en la red tres
+        retransmit = true;
+        remote = InetSocketAddress (Ipv4Address ("192.168.2.255"), 80);
+
+      }else{
+        NS_LOG_UNCOND ("DESTINY NODE!!!");
+      }
+
+      if(retransmit){
         source->SetAllowBroadcast (true);
         source->Connect (remote);
         //Programando evento
         Simulator::ScheduleWithContext (id_of_reciving_node,
                                   Seconds (0.3), &GenerateTraffic,
                                   source, 1000, 1, Seconds (1.0));
-      }else{
-        NS_LOG_UNCOND ("DESTINY NODE!!!");
       }
     }
 }
@@ -147,11 +160,16 @@ int main (int argc, char *argv[])
   NodeContainer mainNodeContainer;
   //Creacion de los nodos
   mainNodeContainer.Create(numNodesNetOne);
+  NS_LOG_INFO("MAIN: "<< numNodesNetOne <<" nodes created");
 
   //bridge2_id es el id del nodo cabeza de cluster que comunica main con two
   bridge2_id = mainNodeContainer.Get(mainTwoAttachmentIndex)->GetId();
   NS_LOG_INFO("MAIN: cluster head between one and two id:"<< bridge2_id);
-  NS_LOG_INFO("MAIN: "<< numNodesNetOne <<" nodes created");
+
+  //bridge3_id es el id del nodo cabeza de cluster que comunica main con three
+  bridge3_id = mainNodeContainer.Get(mainThreeAttachmentIndex)->GetId();
+  NS_LOG_INFO("MAIN: cluster head between one and two id:"<< bridge3_id);
+  
 
   //Intalacion de dispositivos de red wifi en modo adhoc, capa fisica y capa mac a los nodos
   WifiHelper wifi;
@@ -379,16 +397,23 @@ int main (int argc, char *argv[])
   
   TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
   //UN nodo de la red dos va a estar escuchando en el puerto 80
-  Ptr<Socket> destiny = Socket::CreateSocket (mainNodeContainer.Get (3), tid);
+  Ptr<Socket> destiny = Socket::CreateSocket (thirdNodeContainer.Get (3), tid);
   InetSocketAddress local = InetSocketAddress (Ipv4Address::GetAny (), 80);
   destiny->Bind (local);
   destiny->SetRecvCallback (MakeCallback (&ReceivePacket));
 
   //La cabeza de cluster entre red 1 y 2 también va a estar escuchando.
-  Ptr<Socket> bridge_socket = Socket::CreateSocket (mainNodeContainer.Get (mainTwoAttachmentIndex), tid);
-  InetSocketAddress bridge_addr = InetSocketAddress (Ipv4Address::GetAny (), 80);
-  bridge_socket->Bind (bridge_addr);
-  bridge_socket->SetRecvCallback (MakeCallback (&ReceivePacket));
+  Ptr<Socket> bridge_socket_2 = Socket::CreateSocket (mainNodeContainer.Get (mainTwoAttachmentIndex), tid);
+  InetSocketAddress bridge_addr_2 = InetSocketAddress (Ipv4Address::GetAny (), 80);
+  bridge_socket_2->Bind (bridge_addr_2);
+  bridge_socket_2->SetRecvCallback (MakeCallback (&ReceivePacket));
+
+
+  //La cabeza de cluster entre red 1 y 3 también va a estar escuchando.
+  Ptr<Socket> bridge_socket_3 = Socket::CreateSocket (mainNodeContainer.Get (mainThreeAttachmentIndex), tid);
+  InetSocketAddress bridge_addr_3 = InetSocketAddress (Ipv4Address::GetAny (), 80);
+  bridge_socket_3->Bind (bridge_addr_3);
+  bridge_socket_3->SetRecvCallback (MakeCallback (&ReceivePacket));
 
   //El nodo que origina el trafico esta en la red 1.
   Ptr<Socket> source = Socket::CreateSocket (secondNodeContainer.Get (2), tid);
