@@ -83,7 +83,7 @@ void ReceivePacket (Ptr<Socket> socket)
         //retransmitiendo
         TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
         Ptr<Socket> source = Socket::CreateSocket (socket->GetNode(), tid);
-        InetSocketAddress remote = InetSocketAddress (Ipv4Address ("255.255.255.255"), 80);
+        InetSocketAddress remote = InetSocketAddress (Ipv4Address ("192.168.0.255"), 80);
         source->SetAllowBroadcast (true);
         source->Connect (remote);
         //Programando evento
@@ -307,7 +307,7 @@ int main (int argc, char *argv[])
   
   TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
   //UN nodo de la red dos va a estar escuchando en el puerto 80
-  Ptr<Socket> destiny = Socket::CreateSocket (mainNodeContainer.Get (mainTwoAttachmentIndex), tid);
+  Ptr<Socket> destiny = Socket::CreateSocket (mainNodeContainer.Get (3), tid);
   InetSocketAddress local = InetSocketAddress (Ipv4Address::GetAny (), 80);
   destiny->Bind (local);
   destiny->SetRecvCallback (MakeCallback (&ReceivePacket));
@@ -320,7 +320,7 @@ int main (int argc, char *argv[])
 
   //El nodo que origina el trafico esta en la red 1.
   Ptr<Socket> source = Socket::CreateSocket (secondNodeContainer.Get (2), tid);
-  InetSocketAddress remote = InetSocketAddress (Ipv4Address ("255.255.255.255"), 80);
+  InetSocketAddress remote = InetSocketAddress (Ipv4Address ("192.168.1.255"), 80);
   source->SetAllowBroadcast (true);
   source->Connect (remote);
 
