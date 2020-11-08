@@ -53,9 +53,24 @@ using namespace ns3;
 AnimationInterface * pAnim = 0;
 uint32_t bridge2_id;
 uint32_t bridge3_id;
+uint32_t recived_packages;
+uint32_t packetSize; // bytes
+uint32_t numPackets;
+uint32_t numNodesNetOne;
+uint32_t numNodesNetTwo;
+uint32_t numNodesNetThree;
+double interval;
 NS_LOG_COMPONENT_DEFINE ("taller");
 
 
+static void Simulation_Results(){
+  NS_LOG_UNCOND ("********END OF SIMULATION******");
+  NS_LOG_UNCOND ("Number of packages sent: "<<numPackets);
+  NS_LOG_UNCOND ("Number of packages recived: "<<recived_packages);
+  double percent = 100 - ((double)recived_packages/(double)numPackets)*100;
+  NS_LOG_UNCOND ("Percentage of lost packages: "<<percent<<"%");
+
+}
 static void GenerateTraffic (Ptr<Socket> socket, uint32_t pktSize,
                              uint32_t pktCount, Time pktInterval )
 {
@@ -96,6 +111,7 @@ void ReceivePacket (Ptr<Socket> socket)
 
       }else{
         NS_LOG_UNCOND ("DESTINY NODE!!!");
+        recived_packages++;
       }
 
       if(retransmit){
@@ -104,7 +120,7 @@ void ReceivePacket (Ptr<Socket> socket)
         //Programando evento
         Simulator::ScheduleWithContext (id_of_reciving_node,
                                   Seconds (0.3), &GenerateTraffic,
-                                  source, 1000, 1, Seconds (1.0));
+                                  source, packetSize, 1, Seconds (interval));
       }
     }
 }
@@ -119,12 +135,12 @@ int main (int argc, char *argv[])
 
     //Definicion de valores por defecto de variables que se pueden modificar como parametros del
     //programa
-    uint32_t packetSize = 1000; // bytes
-    uint32_t numPackets = 4;
-    uint32_t numNodesNetOne = 10;
-    uint32_t numNodesNetTwo = 10;
-    uint32_t numNodesNetThree = 10;
-    double interval = 1.0; // seconds
+    packetSize = 1000; // bytes
+    numPackets = 4;
+    numNodesNetOne = 10;
+    numNodesNetTwo = 10;
+    numNodesNetThree = 10;
+    interval = 1.0; // seconds
 
 
     //Configuracion de parametros de programa que se podran ingresar mediante ./waf ...taller --<par> = valor
@@ -134,6 +150,7 @@ int main (int argc, char *argv[])
     cmd.AddValue ("numNodesNetOne", "number of nodes for main network", numNodesNetOne);
     cmd.AddValue ("numNodesNetTwo", "number of nodes for second network", numNodesNetTwo);
     cmd.AddValue ("numNodesNetThree", "number of nodes for third network", numNodesNetThree);
+    cmd.AddValue ("interval", "seconds betwen one package and another", interval);
     cmd.Parse (argc, argv);
 
     //si el usuario escoge un numero de nodos menor al limite, automanticamente este valor se cambia
@@ -439,7 +456,9 @@ int main (int argc, char *argv[])
   pAnim = new AnimationInterface("animfile.xml");
   // Tracing
   wifiPhy.EnablePcap ("taller", mainDeviceContainer);
-
+  uint32_t stopTime = numPackets+1;
+  Simulator::Schedule(Seconds(stopTime-0.5),&Simulation_Results);
+  Simulator::Stop (Seconds (stopTime));
   Simulator::Run ();
   Simulator::Destroy ();
 
