@@ -20,9 +20,17 @@
 /*
 En este codigo se definen 3 redes adhoc inalambricas
 La red de mayor jerarquia sera netone
-Las otras dos, nettwo, netone, solo se podrían comunicar através de netone
+Las otras dos, nettwo, netone, solo se pueden comunicar através de netone
 El numero minimo de nodos de cada red puede tener es de dos. En cada red habra almenos
-una cabeza de cluster
+una cabeza de cluster, que se encarga de comunicar
+
+
+Parámetros de consola que pueden personalizar la ejecucion del programa
+
+./waf --run "scratch/taller --numPackets=10" --vis
+./waf --run "scratch/taller --numPackets=30 --numNodesNetTwo=20 --numNodesNetOne=15" --vis
+./waf --run "scratch/taller --numPackets=30 --main_distance=10 --two_distance=10 --three_distance=10" --vis
+
 */
 
 
@@ -51,6 +59,8 @@ una cabeza de cluster
 
 using namespace ns3;
 AnimationInterface * pAnim = 0;
+//Definicion de valores por defecto de variables que se pueden modificar como parametros del
+//programa
 uint32_t bridge2_id;
 uint32_t bridge3_id;
 uint32_t recived_packages;
@@ -59,6 +69,8 @@ uint32_t numPackets;
 uint32_t numNodesNetOne;
 uint32_t numNodesNetTwo;
 uint32_t numNodesNetThree;
+uint32_t source_node;
+uint32_t destiny_node;
 double main_x_coord;
 double main_y_coord;
 double two_x_coord;
@@ -69,6 +81,16 @@ double main_distance;
 double two_distance;
 double three_distance;
 double interval;
+
+
+//Definición de colores para nodos
+uint8_t black_r = 0;
+uint8_t black_g = 0;
+uint8_t black_b = 0;
+
+uint8_t blue_r = 30;
+uint8_t blue_g = 144;
+uint8_t blue_b = 255;
 NS_LOG_COMPONENT_DEFINE ("taller");
 
 
@@ -78,6 +100,16 @@ static void Simulation_Results(){
   NS_LOG_UNCOND ("Number of packages recived: "<<recived_packages);
   double percent = 100 - ((double)recived_packages/(double)numPackets)*100;
   NS_LOG_UNCOND ("Percentage of lost packages: "<<percent<<"%");
+
+}
+
+
+static void SetColors(Ptr<Node> id_source,Ptr<Node> id_destiny){
+ 
+    pAnim->UpdateNodeColor(bridge2_id,black_r, black_g, black_b);
+    pAnim->UpdateNodeColor(bridge3_id,black_r, black_g, black_b);
+    pAnim->UpdateNodeColor(id_source,blue_r, blue_g, blue_b);
+    pAnim->UpdateNodeColor(id_destiny,blue_r, blue_g, blue_b);
 
 }
 static void GenerateTraffic (Ptr<Socket> socket, uint32_t pktSize,
@@ -100,8 +132,10 @@ void ReceivePacket (Ptr<Socket> socket)
   bool retransmit = false;
   while (socket->Recv ())
     {
+
       retransmit = false;
       uint32_t id_of_reciving_node = socket->GetNode()->GetId();
+
       NS_LOG_UNCOND (id_of_reciving_node <<" Received one packet!");
       TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
       Ptr<Socket> source = Socket::CreateSocket (socket->GetNode(), tid);
@@ -159,8 +193,12 @@ int main (int argc, char *argv[])
     three_x_coord = 0.0;
     three_y_coord = 50.0;
     three_distance = 20.0;
+    source_node = 2;
+    destiny_node = 3;
 
+    uint32_t stopTime = numPackets*interval+1;
 
+    
     //Configuracion de parametros de programa que se podran ingresar mediante ./waf ...taller --<par> = valor
     CommandLine cmd;
     cmd.AddValue ("packetSize", "size of application packet sent", packetSize);
@@ -168,6 +206,8 @@ int main (int argc, char *argv[])
     cmd.AddValue ("numNodesNetOne", "number of nodes for main network", numNodesNetOne);
     cmd.AddValue ("numNodesNetTwo", "number of nodes for second network", numNodesNetTwo);
     cmd.AddValue ("numNodesNetThree", "number of nodes for third network", numNodesNetThree);
+    cmd.AddValue ("source_node", "node from net two that sends traffic", source_node);
+    cmd.AddValue ("destiny_node", "node from net three that receives traffic", destiny_node);
     cmd.AddValue ("interval", "seconds betwen one package and another", interval);
     cmd.AddValue ("main_x_coord", "X coordinate of first node of main net", main_x_coord);
     cmd.AddValue ("main_y_coord", "Y coordinate of first node of main net", main_y_coord);
@@ -437,11 +477,13 @@ int main (int argc, char *argv[])
   
 
 
+  
+  
   /**************comunicacion entre clusters****************************/
   
   TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
   //UN nodo de la red dos va a estar escuchando en el puerto 80
-  Ptr<Socket> destiny = Socket::CreateSocket (thirdNodeContainer.Get (3), tid);
+  Ptr<Socket> destiny = Socket::CreateSocket (thirdNodeContainer.Get (destiny_node), tid);
   InetSocketAddress local = InetSocketAddress (Ipv4Address::GetAny (), 80);
   destiny->Bind (local);
   destiny->SetRecvCallback (MakeCallback (&ReceivePacket));
@@ -460,7 +502,7 @@ int main (int argc, char *argv[])
   bridge_socket_3->SetRecvCallback (MakeCallback (&ReceivePacket));
 
   //El nodo que origina el trafico esta en la red 1.
-  Ptr<Socket> source = Socket::CreateSocket (secondNodeContainer.Get (2), tid);
+  Ptr<Socket> source = Socket::CreateSocket (secondNodeContainer.Get (source_node), tid);
   InetSocketAddress remote = InetSocketAddress (Ipv4Address ("192.168.1.255"), 80);
   source->SetAllowBroadcast (true);
   source->Connect (remote);
@@ -480,15 +522,22 @@ int main (int argc, char *argv[])
 
 
 
-  pAnim = new AnimationInterface("animfile.xml");
   // Tracing
   wifiPhy.EnablePcap ("taller", mainDeviceContainer);
-  uint32_t stopTime = numPackets+1;
-  Simulator::Schedule(Seconds(stopTime-0.5),&Simulation_Results);
+
+  //Configuracion de visualizacion
+  
+  pAnim = new AnimationInterface("animfile.xml");
+  
+  Ptr<Node> id_source = secondNodeContainer.Get (source_node);
+  Ptr<Node> id_destiny = thirdNodeContainer.Get (destiny_node);
+  Simulator::Schedule(Seconds(0.0),&SetColors,id_source,id_destiny);
+  //Pogramacion de inicio y final de la simulación
+  Simulator::Schedule(Seconds(stopTime-0.1),&Simulation_Results);
   Simulator::Stop (Seconds (stopTime));
   Simulator::Run ();
   Simulator::Destroy ();
 
 
   return 0;
-} 
+  }
