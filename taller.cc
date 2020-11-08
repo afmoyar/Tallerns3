@@ -59,6 +59,15 @@ uint32_t numPackets;
 uint32_t numNodesNetOne;
 uint32_t numNodesNetTwo;
 uint32_t numNodesNetThree;
+double main_x_coord;
+double main_y_coord;
+double two_x_coord;
+double two_y_coord;
+double three_x_coord;
+double three_y_coord;
+double main_distance;
+double two_distance;
+double three_distance;
 double interval;
 NS_LOG_COMPONENT_DEFINE ("taller");
 
@@ -141,6 +150,15 @@ int main (int argc, char *argv[])
     numNodesNetTwo = 10;
     numNodesNetThree = 10;
     interval = 1.0; // seconds
+    main_x_coord = 70.0;
+    main_y_coord = 20.0;
+    main_distance = 10.0;
+    two_x_coord = 120.0;
+    two_y_coord = 50.0;
+    two_distance = 20.0;
+    three_x_coord = 0.0;
+    three_y_coord = 50.0;
+    three_distance = 20.0;
 
 
     //Configuracion de parametros de programa que se podran ingresar mediante ./waf ...taller --<par> = valor
@@ -151,6 +169,15 @@ int main (int argc, char *argv[])
     cmd.AddValue ("numNodesNetTwo", "number of nodes for second network", numNodesNetTwo);
     cmd.AddValue ("numNodesNetThree", "number of nodes for third network", numNodesNetThree);
     cmd.AddValue ("interval", "seconds betwen one package and another", interval);
+    cmd.AddValue ("main_x_coord", "X coordinate of first node of main net", main_x_coord);
+    cmd.AddValue ("main_y_coord", "Y coordinate of first node of main net", main_y_coord);
+    cmd.AddValue ("main_distance", "distances that separates nodes in main net", main_distance);
+    cmd.AddValue ("two_x_coord", "X coordinate of first node of second net", two_x_coord);
+    cmd.AddValue ("two_y_coord", "Y coordinate of first node of second net", two_y_coord);
+    cmd.AddValue ("two_distance", "distances that separates nodes in second net", two_distance);
+    cmd.AddValue ("three_x_coord", "X coordinate of first node of third net", three_x_coord);
+    cmd.AddValue ("three_y_coord", "Y coordinate of first node of third net", three_y_coord);
+    cmd.AddValue ("three_distance", "distances that separates nodes in third net", three_distance);
     cmd.Parse (argc, argv);
 
     //si el usuario escoge un numero de nodos menor al limite, automanticamente este valor se cambia
@@ -221,15 +248,15 @@ int main (int argc, char *argv[])
   MobilityHelper mobility;
   //Primero se define la posicion de cada nodo en una grilla
   mobility.SetPositionAllocator ("ns3::GridPositionAllocator",
-                                 "MinX", DoubleValue (70.0),//Cordenada inicial en x
-                                 "MinY", DoubleValue (20.0),//Cordenada inicial en Y
-                                 "DeltaX", DoubleValue (10.0),//Distancia horizontal entre nodos
-                                 "DeltaY", DoubleValue (10.0),//Distancia vertical entre nodos
+                                 "MinX", DoubleValue (main_x_coord),//Cordenada inicial en x
+                                 "MinY", DoubleValue (main_y_coord),//Cordenada inicial en Y
+                                 "DeltaX", DoubleValue (main_distance),//Distancia horizontal entre nodos
+                                 "DeltaY", DoubleValue (main_distance),//Distancia vertical entre nodos
                                  "GridWidth", UintegerValue (5),
                                  "LayoutType", StringValue ("RowFirst"));
   //Luego se les indica a los nodos en que forma se pueden mover
   mobility.SetMobilityModel ("ns3::RandomDirection2dMobilityModel",
-                             "Bounds", RectangleValue (Rectangle (-500, 500, -500, 500)),
+                             "Bounds", RectangleValue (Rectangle (main_x_coord-10, main_x_coord+100, main_y_coord-10, main_y_coord+100)),
                              "Speed", StringValue ("ns3::ConstantRandomVariable[Constant=2]"),
                              "Pause", StringValue ("ns3::ConstantRandomVariable[Constant=0.2]"));
   mobility.Install (mainNodeContainer);
@@ -308,15 +335,15 @@ int main (int argc, char *argv[])
   MobilityHelper mobilityB;
   //Primero se define la posicion de cada nodo en una grilla
   mobilityB.SetPositionAllocator ("ns3::GridPositionAllocator",
-                                 "MinX", DoubleValue (120.0),
-                                 "MinY", DoubleValue (50.0),
-                                 "DeltaX", DoubleValue (20.0),
-                                 "DeltaY", DoubleValue (20.0),
+                                 "MinX", DoubleValue (two_x_coord),
+                                 "MinY", DoubleValue (two_y_coord),
+                                 "DeltaX", DoubleValue (two_distance),
+                                 "DeltaY", DoubleValue (two_distance),
                                  "GridWidth", UintegerValue (5),
                                  "LayoutType", StringValue ("RowFirst"));
   //Luego se les indica a los nodos en que forma se pueden mover
   mobilityB.SetMobilityModel ("ns3::RandomDirection2dMobilityModel",
-                             "Bounds", RectangleValue (Rectangle (-500, 500, -500, 500)),
+                             "Bounds", RectangleValue (Rectangle (two_x_coord-10, two_x_coord+100, two_y_coord-10, two_y_coord+100)),
                              "Speed", StringValue ("ns3::ConstantRandomVariable[Constant=2]"),
                              "Pause", StringValue ("ns3::ConstantRandomVariable[Constant=0.2]"));
   mobilityB.Install(newNodesNetTwo);
@@ -384,15 +411,15 @@ int main (int argc, char *argv[])
   MobilityHelper mobilityC;
   //Primero se define la posicion de cada nodo en una grilla
   mobilityC.SetPositionAllocator ("ns3::GridPositionAllocator",
-                                 "MinX", DoubleValue (0.0),
-                                 "MinY", DoubleValue (50.0),
-                                 "DeltaX", DoubleValue (20.0),
-                                 "DeltaY", DoubleValue (15.0),
+                                 "MinX", DoubleValue (three_x_coord),
+                                 "MinY", DoubleValue (three_y_coord),
+                                 "DeltaX", DoubleValue (three_distance),
+                                 "DeltaY", DoubleValue (three_distance),
                                  "GridWidth", UintegerValue (5),
                                  "LayoutType", StringValue ("RowFirst"));
   //Luego se les indica a los nodos en que forma se pueden mover
   mobilityC.SetMobilityModel ("ns3::RandomDirection2dMobilityModel",
-                             "Bounds", RectangleValue (Rectangle (-500, 500, -500, 500)),
+                             "Bounds", RectangleValue (Rectangle (three_x_coord-10, three_x_coord+100, three_y_coord-10, three_y_coord+100)),
                              "Speed", StringValue ("ns3::ConstantRandomVariable[Constant=2]"),
                              "Pause", StringValue ("ns3::ConstantRandomVariable[Constant=0.2]"));
   mobilityC.Install(newNodesNetThree);
