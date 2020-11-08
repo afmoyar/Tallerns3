@@ -109,7 +109,7 @@ int main (int argc, char *argv[])
     if(numNodesNetThree < 2) numNodesNetThree = minValue;
     //se establecen los nodos que van a servir como conexion entre las redes de baja jerarquia
     // y la red principal
-    uint32_t mainTwoAttachmentIndex = 0;
+    uint32_t mainTwoAttachmentIndex = numNodesNetOne-1;
     //uint32_t mainThreeAttachmentIndex = numNodesNetOne-1;
 
 
@@ -168,7 +168,7 @@ int main (int argc, char *argv[])
                                  "LayoutType", StringValue ("RowFirst"));
   //Luego se les indica a los nodos en que forma se pueden mover
   mobility.SetMobilityModel ("ns3::RandomDirection2dMobilityModel",
-                             "Bounds", RectangleValue (Rectangle (-500, 500, -500, 500)),
+                             "Bounds", RectangleValue (Rectangle (-200, 200, -200, 200)),
                              "Speed", StringValue ("ns3::ConstantRandomVariable[Constant=2]"),
                              "Pause", StringValue ("ns3::ConstantRandomVariable[Constant=0.2]"));
   mobility.Install (mainNodeContainer);
@@ -223,6 +223,8 @@ int main (int argc, char *argv[])
   YansWifiChannelHelper wifiChannel2 = YansWifiChannelHelper::Default ();
   wifiPhy2.SetChannel (wifiChannel2.Create ());
   NetDeviceContainer secondDeviceContainer = wifi2.Install (wifiPhy2, mac2, newNodesNetTwo);
+  secondDeviceContainer.Add(wifi2.Install (wifiPhy2, mac2, mainNodeContainer.Get(mainTwoAttachmentIndex)));
+  
 
 
   //Intalacion de pila de protocolos a los dispositivos de red
@@ -253,7 +255,7 @@ int main (int argc, char *argv[])
                                  "LayoutType", StringValue ("RowFirst"));
   //Luego se les indica a los nodos en que forma se pueden mover
   mobilityB.SetMobilityModel ("ns3::RandomDirection2dMobilityModel",
-                             "Bounds", RectangleValue (Rectangle (-500, 500, -500, 500)),
+                             "Bounds", RectangleValue (Rectangle (-200, 200, -200, 200)),
                              "Speed", StringValue ("ns3::ConstantRandomVariable[Constant=2]"),
                              "Pause", StringValue ("ns3::ConstantRandomVariable[Constant=0.2]"));
   mobilityB.Install(newNodesNetTwo);
@@ -276,6 +278,7 @@ int main (int argc, char *argv[])
   mobilityTwo.Install (newNodesNetTwo);
   */
   /**************comunicacion entre clusters****************************/
+  /*
   TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
   Ptr<Socket> recvSink = Socket::CreateSocket (mainNodeContainer.Get (1), tid);
   InetSocketAddress local = InetSocketAddress (Ipv4Address::GetAny (), 80);
@@ -287,8 +290,7 @@ int main (int argc, char *argv[])
   source->SetAllowBroadcast (true);
   source->Connect (remote);
 
-  // Tracing
-  wifiPhy.EnablePcap ("taller", mainDeviceContainer);
+  
 
   // Output what we are doing
   NS_LOG_INFO ("Testing " << numPackets  << " packets sent");
@@ -296,10 +298,16 @@ int main (int argc, char *argv[])
   Simulator::ScheduleWithContext (source->GetNode ()->GetId (),
                                   Seconds (5.0), &GenerateTraffic,
                                   source, packetSize, numPackets, interPacketInterval);
-  
+                                 
+  */
+
 /**************comunicacion entre clusters****************************/
 
+
+
   pAnim = new AnimationInterface("animfile.xml");
+  // Tracing
+  wifiPhy.EnablePcap ("taller", mainDeviceContainer);
 
   Simulator::Run ();
   Simulator::Destroy ();
