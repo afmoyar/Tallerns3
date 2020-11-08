@@ -132,7 +132,7 @@ int main (int argc, char *argv[])
     //se establecen los nodos que van a servir como conexion entre las redes de baja jerarquia
     // y la red principal
     uint32_t mainTwoAttachmentIndex = numNodesNetOne-1;
-    //uint32_t mainThreeAttachmentIndex = numNodesNetOne-1;
+    uint32_t mainThreeAttachmentIndex = 1;
 
 
     Time interPacketInterval = Seconds (interval);
@@ -166,7 +166,7 @@ int main (int argc, char *argv[])
 
 
   //Intalacion de pila de protocolos a los dispositivos de red
-  NS_LOG_INFO ("MAIN:Enabling OLSR routing on all nodes");
+  //NS_LOG_INFO ("MAIN:Enabling OLSR routing on all nodes");
   OlsrHelper olsr;
   InternetStackHelper internet;
   //internet.SetRoutingHelper (olsr);
@@ -186,15 +186,15 @@ int main (int argc, char *argv[])
   MobilityHelper mobility;
   //Primero se define la posicion de cada nodo en una grilla
   mobility.SetPositionAllocator ("ns3::GridPositionAllocator",
-                                 "MinX", DoubleValue (20.0),
-                                 "MinY", DoubleValue (20.0),
-                                 "DeltaX", DoubleValue (20.0),
-                                 "DeltaY", DoubleValue (20.0),
+                                 "MinX", DoubleValue (70.0),//Cordenada inicial en x
+                                 "MinY", DoubleValue (20.0),//Cordenada inicial en Y
+                                 "DeltaX", DoubleValue (10.0),//Distancia horizontal entre nodos
+                                 "DeltaY", DoubleValue (10.0),//Distancia vertical entre nodos
                                  "GridWidth", UintegerValue (5),
                                  "LayoutType", StringValue ("RowFirst"));
   //Luego se les indica a los nodos en que forma se pueden mover
   mobility.SetMobilityModel ("ns3::RandomDirection2dMobilityModel",
-                             "Bounds", RectangleValue (Rectangle (-200, 200, -200, 200)),
+                             "Bounds", RectangleValue (Rectangle (-500, 500, -500, 500)),
                              "Speed", StringValue ("ns3::ConstantRandomVariable[Constant=2]"),
                              "Pause", StringValue ("ns3::ConstantRandomVariable[Constant=0.2]"));
   mobility.Install (mainNodeContainer);
@@ -254,7 +254,7 @@ int main (int argc, char *argv[])
 
 
   //Intalacion de pila de protocolos a los dispositivos de red
-  NS_LOG_INFO ("TWO:Enabling OLSR routing on all nodes");
+  //NS_LOG_INFO ("TWO:Enabling OLSR routing on all nodes");
   OlsrHelper olsr2;
   InternetStackHelper internet2;
   //internet2.SetRoutingHelper (olsr2);
@@ -273,15 +273,15 @@ int main (int argc, char *argv[])
   MobilityHelper mobilityB;
   //Primero se define la posicion de cada nodo en una grilla
   mobilityB.SetPositionAllocator ("ns3::GridPositionAllocator",
-                                 "MinX", DoubleValue (70.0),
-                                 "MinY", DoubleValue (70.0),
-                                 "DeltaX", DoubleValue (40.0),
-                                 "DeltaY", DoubleValue (40.0),
+                                 "MinX", DoubleValue (120.0),
+                                 "MinY", DoubleValue (50.0),
+                                 "DeltaX", DoubleValue (20.0),
+                                 "DeltaY", DoubleValue (20.0),
                                  "GridWidth", UintegerValue (5),
                                  "LayoutType", StringValue ("RowFirst"));
   //Luego se les indica a los nodos en que forma se pueden mover
   mobilityB.SetMobilityModel ("ns3::RandomDirection2dMobilityModel",
-                             "Bounds", RectangleValue (Rectangle (-200, 200, -200, 200)),
+                             "Bounds", RectangleValue (Rectangle (-500, 500, -500, 500)),
                              "Speed", StringValue ("ns3::ConstantRandomVariable[Constant=2]"),
                              "Pause", StringValue ("ns3::ConstantRandomVariable[Constant=0.2]"));
   mobilityB.Install(newNodesNetTwo);
@@ -296,13 +296,85 @@ int main (int argc, char *argv[])
   }
   mobilityTwo.PushReferenceMobilityModel (mainNodeContainer.Get (mainTwoAttachmentIndex));
   mobilityTwo.SetPositionAllocator (subnetAlloc);
-  /*
-  mobilityTwo.SetMobilityModel ("ns3::ConstantPositionMobilityModel",
-                                 "Bounds", RectangleValue (Rectangle (-10, 10, -10, 10)),
-                                 "Speed", StringValue ("ns3::ConstantRandomVariable[Constant=3]"),
-                                 "Pause", StringValue ("ns3::ConstantRandomVariable[Constant=0.4]"));
-  mobilityTwo.Install (newNodesNetTwo);
-  */
+
+
+
+  ///////////////////////////////////////////////////////////////////////////
+  //                                                                         //
+  //                                RED 3                                   //
+  //                                                                       //
+  ///////////////////////////////////////////////////////////////////////////
+
+  NS_LOG_INFO ("THREE:Creating net 3 atached by main net by node " << mainThreeAttachmentIndex);
+  //Creamos un contenedor temporal donde se guardan los nuevos nodos 
+  NodeContainer newNodesNetThree;
+  //Creamos newNodesNetThree - 1 nuevos nodos, el -1 es porque habrá un nodo adicional que es el de
+  //union con la red principal
+  newNodesNetThree.Create (numNodesNetThree - 1);
+  // Creacion del contenedor de nodos para la red
+  NodeContainer thirdNodeContainer (mainNodeContainer.Get (mainThreeAttachmentIndex), newNodesNetThree);
+  NS_LOG_INFO("THREE: "<< thirdNodeContainer.GetN() <<" nodes created");
+
+  //Intalacion de dispositivos de red wifi en modo adhoc, capa fisica y capa mac a los nodos
+  WifiHelper wifi3;
+  WifiMacHelper mac3;
+  mac3.SetType ("ns3::AdhocWifiMac");
+  wifi3.SetRemoteStationManager ("ns3::ConstantRateWifiManager",
+                                "DataMode", StringValue ("OfdmRate54Mbps"));
+  YansWifiPhyHelper wifiPhy3 = YansWifiPhyHelper::Default ();
+  YansWifiChannelHelper wifiChannel3 = YansWifiChannelHelper::Default ();
+  wifiPhy3.SetChannel (wifiChannel3.Create ());
+  NetDeviceContainer thirdDeviceContainer = wifi3.Install (wifiPhy3, mac3, newNodesNetThree);
+  thirdDeviceContainer.Add(wifi3.Install (wifiPhy3, mac3, mainNodeContainer.Get(mainThreeAttachmentIndex)));
+  
+
+
+  //Intalacion de pila de protocolos a los dispositivos de red
+  //NS_LOG_INFO ("TWO:Enabling OLSR routing on all nodes");
+  OlsrHelper olsr3;
+  InternetStackHelper internet3;
+  //internet2.SetRoutingHelper (olsr2);
+  //se establace al protocolo olsr como protocolo de enrutamiento para la red.
+  //Este funciona con tablas de enrutamiento en redes adhoc moviles
+  internet3.Install (newNodesNetThree);
+
+  //Asignacion de direcciones ip
+  NS_LOG_INFO ("MAIN:setting up ip adresses on all nodes");
+  Ipv4AddressHelper ipAddrs3;
+  ipAddrs3.SetBase ("192.168.2.0", "255.255.255.0");
+  //cada dispositivo de red tendra direcciones 192.168.1.1, 192.168.1.2....192.168.1.254
+  ipAddrs3.Assign (thirdDeviceContainer);
+
+  //La red adhoc es movil, por lo tanto se definen atributos de movilidad a los nodos
+  MobilityHelper mobilityC;
+  //Primero se define la posicion de cada nodo en una grilla
+  mobilityC.SetPositionAllocator ("ns3::GridPositionAllocator",
+                                 "MinX", DoubleValue (0.0),
+                                 "MinY", DoubleValue (50.0),
+                                 "DeltaX", DoubleValue (20.0),
+                                 "DeltaY", DoubleValue (15.0),
+                                 "GridWidth", UintegerValue (5),
+                                 "LayoutType", StringValue ("RowFirst"));
+  //Luego se les indica a los nodos en que forma se pueden mover
+  mobilityC.SetMobilityModel ("ns3::RandomDirection2dMobilityModel",
+                             "Bounds", RectangleValue (Rectangle (-500, 500, -500, 500)),
+                             "Speed", StringValue ("ns3::ConstantRandomVariable[Constant=2]"),
+                             "Pause", StringValue ("ns3::ConstantRandomVariable[Constant=0.2]"));
+  mobilityC.Install(newNodesNetThree);
+
+  MobilityHelper mobilityThree;
+  Ptr<ListPositionAllocator> subnetAllocC =
+  CreateObject<ListPositionAllocator> ();
+  for (uint32_t j = 0; j < newNodesNetThree.GetN (); ++j)
+  {
+
+        subnetAllocC->Add (Vector (0.0, j, 0.0));
+  }
+  mobilityThree.PushReferenceMobilityModel (mainNodeContainer.Get (mainThreeAttachmentIndex));
+  mobilityThree.SetPositionAllocator (subnetAllocC);
+  
+
+
   /**************comunicacion entre clusters****************************/
   
   TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
