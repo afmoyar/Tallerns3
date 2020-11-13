@@ -23,14 +23,10 @@ La red de mayor jerarquia sera netone
 Las otras dos, nettwo, netone, solo se pueden comunicar através de netone
 El numero minimo de nodos de cada red puede tener es de dos. En cada red habra almenos
 una cabeza de cluster, que se encarga de comunicar
-
-
 Parámetros de consola que pueden personalizar la ejecucion del programa
-
 ./waf --run "scratch/taller --numPackets=10" --vis
 ./waf --run "scratch/taller --numPackets=30 --numNodesNetTwo=20 --numNodesNetOne=15" --vis
 ./waf --run "scratch/taller --numPackets=30 --main_distance=10 --two_distance=10 --three_distance=10" --vis
-
 */
 
 
@@ -56,6 +52,10 @@ Parámetros de consola que pueden personalizar la ejecucion del programa
 #include "ns3/csma-helper.h"
 #include "ns3/animation-interface.h"
 #include "ns3/netanim-module.h"
+
+#include "ns3/core-module.h"
+#include "ns3/opengym-module.h"
+
 
 using namespace ns3;
 AnimationInterface * pAnim = 0;
@@ -94,6 +94,18 @@ uint8_t blue_b = 255;
 NS_LOG_COMPONENT_DEFINE ("taller");
 
 
+//Ptr<OpenGymInterface> openGymInterface =  CreateObject<OpenGymInterface> (5555);
+/*
+Ptr<OpenGymSpace> GetObservationSpace();
+Ptr<OpenGymSpace> GetActionSpace();
+Ptr<OpenGymDataContainer> GetObservation();
+float GetReward();
+bool GetGameOver();
+std::string GetExtraInfo();
+bool ExecuteActions(Ptr<OpenGymDataContainer> action);
+*/
+
+
 static void Simulation_Results(){
   NS_LOG_UNCOND ("********END OF SIMULATION******");
   NS_LOG_UNCOND ("Number of packages sent: "<<numPackets);
@@ -104,14 +116,7 @@ static void Simulation_Results(){
 }
 
 
-static void SetColors(Ptr<Node> id_source,Ptr<Node> id_destiny){
- 
-    pAnim->UpdateNodeColor(bridge2_id,black_r, black_g, black_b);
-    pAnim->UpdateNodeColor(bridge3_id,black_r, black_g, black_b);
-    pAnim->UpdateNodeColor(id_source,blue_r, blue_g, blue_b);
-    pAnim->UpdateNodeColor(id_destiny,blue_r, blue_g, blue_b);
 
-}
 static void GenerateTraffic (Ptr<Socket> socket, uint32_t pktSize,
                              uint32_t pktCount, Time pktInterval )
 {
@@ -168,6 +173,115 @@ void ReceivePacket (Ptr<Socket> socket)
     }
 }
 
+
+//OPENAI GYM
+/*
+Define observation space
+*/
+Ptr<OpenGymSpace> MyGetObservationSpace(void)
+{
+  uint32_t nodeNum = 5;
+  float low = 0.0;
+  float high = 10.0;
+  std::vector<uint32_t> shape = {nodeNum,};
+  std::string dtype = TypeNameGet<uint32_t> ();
+  Ptr<OpenGymBoxSpace> space = CreateObject<OpenGymBoxSpace> (low, high, shape, dtype);
+  NS_LOG_UNCOND ("MyGetObservationSpace: " << space);
+  return space;
+}
+
+/*
+Define action space
+*/
+Ptr<OpenGymSpace> MyGetActionSpace(void)
+{
+  uint32_t nodeNum = 5;
+
+  Ptr<OpenGymDiscreteSpace> space = CreateObject<OpenGymDiscreteSpace> (nodeNum);
+  NS_LOG_UNCOND ("MyGetActionSpace: " << space);
+  return space;
+}
+
+/*
+Define game over condition
+*/
+bool MyGetGameOver(void)
+{
+
+  bool isGameOver = false;
+  bool test = false;
+  static float stepCounter = 0.0;
+  stepCounter += 1;
+  if (stepCounter == 10 && test) {
+      isGameOver = true;
+  }
+  NS_LOG_UNCOND ("MyGetGameOver: " << isGameOver);
+  return isGameOver;
+}
+
+/*
+Collect observations
+*/
+Ptr<OpenGymDataContainer> MyGetObservation(void)
+{
+  uint32_t nodeNum = 5;
+  uint32_t low = 0.0;
+  uint32_t high = 10.0;
+  Ptr<UniformRandomVariable> rngInt = CreateObject<UniformRandomVariable> ();
+
+  std::vector<uint32_t> shape = {nodeNum,};
+  Ptr<OpenGymBoxContainer<uint32_t> > box = CreateObject<OpenGymBoxContainer<uint32_t> >(shape);
+
+  // generate random data
+  for (uint32_t i = 0; i<nodeNum; i++){
+    uint32_t value = rngInt->GetInteger(low, high);
+    box->AddValue(value);
+  }
+
+  NS_LOG_UNCOND ("MyGetObservation: " << box);
+  return box;
+}
+
+/*
+Define reward function
+*/
+float MyGetReward(void)
+{
+  static float reward = 0.0;
+  reward += 1;
+  return reward;
+}
+
+/*
+Define extra info. Optional
+*/
+std::string MyGetExtraInfo(void)
+{
+  std::string myInfo = "testInfo";
+  myInfo += "|123";
+  NS_LOG_UNCOND("MyGetExtraInfo: " << myInfo);
+  return myInfo;
+}
+
+
+/*
+Execute received actions
+*/
+bool MyExecuteActions(Ptr<OpenGymDataContainer> action)
+{
+  Ptr<OpenGymDiscreteContainer> discrete = DynamicCast<OpenGymDiscreteContainer>(action);
+  NS_LOG_UNCOND ("MyExecuteActions: " << action);
+  return true;
+}
+
+void ScheduleNextStateRead(double envStepTime, Ptr<OpenGymInterface> openGym)
+{
+  Simulator::Schedule (Seconds(envStepTime), &ScheduleNextStateRead, envStepTime, openGym);
+  openGym->NotifyCurrentState();
+}
+
+
+//END OPENAI GYM
 
 
 int main (int argc, char *argv[])
@@ -529,12 +643,47 @@ int main (int argc, char *argv[])
   
   pAnim = new AnimationInterface("animfile.xml");
   
+  
+  //openai gym
+  // Parameters of the scenario
+  uint32_t simSeed = 1;
+  double simulationTime = 1; //seconds
+  double envStepTime = 0.1; //seconds, ns3gym env step time interval
+  uint32_t openGymPort = 5555;
+  uint32_t testArg = 0;
+
+ 
+
+  NS_LOG_UNCOND("Ns3Env parameters:");
+  NS_LOG_UNCOND("--simulationTime: " << simulationTime);
+  NS_LOG_UNCOND("--openGymPort: " << openGymPort);
+  NS_LOG_UNCOND("--envStepTime: " << envStepTime);
+  NS_LOG_UNCOND("--seed: " << simSeed);
+  NS_LOG_UNCOND("--testArg: " << testArg);
+
+  RngSeedManager::SetSeed (1);
+  RngSeedManager::SetRun (simSeed);
+
+  // OpenGym Env
+  Ptr<OpenGymInterface> openGym = CreateObject<OpenGymInterface> (openGymPort);
+  openGym->SetGetActionSpaceCb( MakeCallback (&MyGetActionSpace) );
+  openGym->SetGetObservationSpaceCb( MakeCallback (&MyGetObservationSpace) );
+  openGym->SetGetGameOverCb( MakeCallback (&MyGetGameOver) );
+  openGym->SetGetObservationCb( MakeCallback (&MyGetObservation) );
+  openGym->SetGetRewardCb( MakeCallback (&MyGetReward) );
+  openGym->SetGetExtraInfoCb( MakeCallback (&MyGetExtraInfo) );
+  openGym->SetExecuteActionsCb( MakeCallback (&MyExecuteActions) );
+  //Simulator::Schedule (Seconds(0.0), &ScheduleNextStateRead, envStepTime, openGym);
+  //end openai gym
+  
   Ptr<Node> id_source = secondNodeContainer.Get (source_node);
   Ptr<Node> id_destiny = thirdNodeContainer.Get (destiny_node);
-  Simulator::Schedule(Seconds(0.0),&SetColors,id_source,id_destiny);
+  //Simulator::Schedule(Seconds(0.0),&SetColors,id_source,id_destiny);
   //Pogramacion de inicio y final de la simulación
+  Simulator::Schedule (Seconds(0.0), &ScheduleNextStateRead, envStepTime, openGym);
   Simulator::Schedule(Seconds(stopTime-0.1),&Simulation_Results);
   Simulator::Stop (Seconds (stopTime));
+    
   Simulator::Run ();
   Simulator::Destroy ();
 
