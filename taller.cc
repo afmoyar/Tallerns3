@@ -53,6 +53,12 @@ Parámetros de consola que pueden personalizar la ejecucion del programa
 #include "ns3/animation-interface.h"
 #include "ns3/netanim-module.h"
 
+#include "ns3/applications-module.h"
+#include "ns3/mobility-module.h"
+#include "ns3/wifi-module.h"
+#include "ns3/node-list.h"
+
+
 #include "ns3/core-module.h"
 #include "ns3/opengym-module.h"
 
@@ -225,22 +231,45 @@ bool MyGetGameOver(void)
   return isGameOver;
 }
 
+//Node info queue
+Ptr<WifiMacQueue> GetQueue(Ptr<Node> node)
+{
+  Ptr<NetDevice> dev = node->GetDevice (0);
+  Ptr<WifiNetDevice> wifi_dev = DynamicCast<WifiNetDevice> (dev);
+  Ptr<WifiMac> wifi_mac = wifi_dev->GetMac ();
+  Ptr<RegularWifiMac> rmac = DynamicCast<RegularWifiMac> (wifi_mac);
+  PointerValue ptr;
+  rmac->GetAttribute ("Txop", ptr);
+  Ptr<Txop> txop = ptr.Get<Txop> ();
+  Ptr<WifiMacQueue> queue = txop->GetWifiMacQueue ();
+  return queue;
+}
+
 /*
 Collect observations
 */
 Ptr<OpenGymDataContainer> MyGetObservation(void)
 {
   uint32_t nodeNum = NodeList::GetNNodes();;
-  uint32_t low = 0.0;
-  uint32_t high = 10.0;
+  //uint32_t low = 0.0;
+  //uint32_t high = 10.0;
   Ptr<UniformRandomVariable> rngInt = CreateObject<UniformRandomVariable> ();
 
   std::vector<uint32_t> shape = {nodeNum,};
   Ptr<OpenGymBoxContainer<uint32_t> > box = CreateObject<OpenGymBoxContainer<uint32_t> >(shape);
 
+/*
   // generate random data
   for (uint32_t i = 0; i<nodeNum; i++){
     uint32_t value = rngInt->GetInteger(low, high);
+    box->AddValue(value);
+  }
+*/
+  
+  for (NodeList::Iterator i = NodeList::Begin (); i != NodeList::End (); ++i) {
+    Ptr<Node> node = *i;
+    Ptr<WifiMacQueue> queue = GetQueue (node);
+    uint32_t value = queue->GetNPackets();
     box->AddValue(value);
   }
 
@@ -254,7 +283,12 @@ Define reward function
 float MyGetReward(void)
 {
   static float reward = 0.0;
-  reward += 1;
+  if (recived_packages > reward) {
+       reward += 1;
+       NS_LOG_UNCOND ("Giving reward: " << reward);
+  }
+ 
+  //reward += 1;
   return reward;
 }
 
