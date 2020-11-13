@@ -257,8 +257,8 @@ Define extra info. Optional
 */
 std::string MyGetExtraInfo(void)
 {
-  std::string myInfo = "testInfo";
-  myInfo += "|123";
+  std::string myInfo = "extraInfo";
+  myInfo += "n";
   NS_LOG_UNCOND("MyGetExtraInfo: " << myInfo);
   return myInfo;
 }
