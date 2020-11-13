@@ -209,13 +209,18 @@ bool MyGetGameOver(void)
 {
 
   bool isGameOver = false;
-  bool test = false;
+  //bool test = false;
   static float stepCounter = 0.0;
   stepCounter += 1;
-  if (stepCounter == 10 && test) {
+  if (stepCounter == 100) {
       isGameOver = true;
   }
   NS_LOG_UNCOND ("MyGetGameOver: " << isGameOver);
+  NS_LOG_UNCOND ("********Game over. END OF SIMULATION******");
+  NS_LOG_UNCOND ("Number of packages sent: "<<numPackets);
+  NS_LOG_UNCOND ("Number of packages recived: "<<recived_packages);
+  double percent = 100 - ((double)recived_packages/(double)numPackets)*100;
+  NS_LOG_UNCOND ("Percentage of lost packages: "<<percent<<"%");
   return isGameOver;
 }
 
