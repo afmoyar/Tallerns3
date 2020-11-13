@@ -180,7 +180,7 @@ Define observation space
 */
 Ptr<OpenGymSpace> MyGetObservationSpace(void)
 {
-  uint32_t nodeNum = 5;
+  uint32_t nodeNum = NodeList::GetNNodes();
   float low = 0.0;
   float high = 10.0;
   std::vector<uint32_t> shape = {nodeNum,};
@@ -195,7 +195,7 @@ Define action space
 */
 Ptr<OpenGymSpace> MyGetActionSpace(void)
 {
-  uint32_t nodeNum = 5;
+  uint32_t nodeNum = NodeList::GetNNodes();;
 
   Ptr<OpenGymDiscreteSpace> space = CreateObject<OpenGymDiscreteSpace> (nodeNum);
   NS_LOG_UNCOND ("MyGetActionSpace: " << space);
@@ -224,7 +224,7 @@ Collect observations
 */
 Ptr<OpenGymDataContainer> MyGetObservation(void)
 {
-  uint32_t nodeNum = 5;
+  uint32_t nodeNum = NodeList::GetNNodes();;
   uint32_t low = 0.0;
   uint32_t high = 10.0;
   Ptr<UniformRandomVariable> rngInt = CreateObject<UniformRandomVariable> ();
