@@ -70,6 +70,7 @@ AnimationInterface * pAnim = 0;
 uint32_t bridge2_id;
 uint32_t bridge3_id;
 uint32_t recived_packages;
+uint32_t realsent;
 uint32_t packetSize; // bytes
 uint32_t numPackets;
 uint32_t numNodesNetOne;
@@ -128,6 +129,7 @@ static void GenerateTraffic (Ptr<Socket> socket, uint32_t pktSize,
 {
   if (pktCount > 0)
     {
+      realsent++;
       socket->Send (Create<Packet> (pktSize));
       Simulator::Schedule(pktInterval, &GenerateTraffic,
                            socket, pktSize,pktCount - 1, pktInterval);
@@ -188,7 +190,7 @@ Ptr<OpenGymSpace> MyGetObservationSpace(void)
 {
   uint32_t nodeNum = NodeList::GetNNodes();
   float low = 0.0;
-  float high = 10.0;
+  float high = 100.0;
   std::vector<uint32_t> shape = {nodeNum,};
   std::string dtype = TypeNameGet<uint32_t> ();
   Ptr<OpenGymBoxSpace> space = CreateObject<OpenGymBoxSpace> (low, high, shape, dtype);
@@ -201,10 +203,13 @@ Define action space
 */
 Ptr<OpenGymSpace> MyGetActionSpace(void)
 {
-  uint32_t nodeNum = NodeList::GetNNodes();;
-
-  Ptr<OpenGymDiscreteSpace> space = CreateObject<OpenGymDiscreteSpace> (nodeNum);
-  NS_LOG_UNCOND ("MyGetActionSpace: " << space);
+  uint32_t nodeNum = NodeList::GetNNodes ();
+  float low = 0.0;
+  float high = 100.0;
+  std::vector<uint32_t> shape = {nodeNum,};
+  std::string dtype = TypeNameGet<uint32_t> ();
+  Ptr<OpenGymBoxSpace> space = CreateObject<OpenGymBoxSpace> (low, high, shape, dtype);
+  NS_LOG_UNCOND ("My action space: " << space);
   return space;
 }
 
@@ -218,7 +223,7 @@ bool MyGetGameOver(void)
   //bool test = false;
   static float stepCounter = 0.0;
   stepCounter += 1;
-  if (stepCounter == 100) {
+  if (stepCounter == 300) {
       isGameOver = true;
        NS_LOG_UNCOND ("MyGetGameOver: " << isGameOver);
        NS_LOG_UNCOND ("********Game over. END OF SIMULATION******");
@@ -226,6 +231,7 @@ bool MyGetGameOver(void)
        NS_LOG_UNCOND ("Number of packages recived: "<<recived_packages);
        double percent = 100 - ((double)recived_packages/(double)numPackets)*100;
        NS_LOG_UNCOND ("Percentage of lost packages: "<<percent<<"%");
+
   }
  
   return isGameOver;
@@ -251,26 +257,20 @@ Collect observations
 Ptr<OpenGymDataContainer> MyGetObservation(void)
 {
   uint32_t nodeNum = NodeList::GetNNodes();;
-  //uint32_t low = 0.0;
-  //uint32_t high = 10.0;
+  uint32_t low = 0.0;
+  uint32_t high = 100.0;
   Ptr<UniformRandomVariable> rngInt = CreateObject<UniformRandomVariable> ();
 
   std::vector<uint32_t> shape = {nodeNum,};
   Ptr<OpenGymBoxContainer<uint32_t> > box = CreateObject<OpenGymBoxContainer<uint32_t> >(shape);
-
-/*
-  // generate random data
-  for (uint32_t i = 0; i<nodeNum; i++){
-    uint32_t value = rngInt->GetInteger(low, high);
-    box->AddValue(value);
-  }
-*/
   
+  //uint32 npos = 0;
   for (NodeList::Iterator i = NodeList::Begin (); i != NodeList::End (); ++i) {
     Ptr<Node> node = *i;
     Ptr<WifiMacQueue> queue = GetQueue (node);
-    uint32_t value = queue->GetNPackets();
-    box->AddValue(value);
+    //uint32_t value = queue->GetNPackets();
+    uint32_t value = rngInt->GetInteger(low, high);
+    box->AddValue(value); 
   }
 
   NS_LOG_UNCOND ("MyGetObservation: " << box);
@@ -303,14 +303,42 @@ std::string MyGetExtraInfo(void)
   return myInfo;
 }
 
+void SetTxPower (Ptr<Node> node, double txp, double txgain)
+{
+  Ptr<NetDevice> device = node->GetDevice (0);
+  Ptr<WifiNetDevice> wifiDevice = DynamicCast<WifiNetDevice> (device);
+  Ptr<YansWifiPhy> phy = DynamicCast<YansWifiPhy>(wifiDevice->GetPhy());
+  phy->SetTxPowerStart(txp);
+  phy->SetTxPowerEnd(txp);
+
+  phy->SetTxGain(txgain);
+  phy->SetRxGain(txgain);
+  
+  phy->SetChannelWidth(160); 
+ 
+}
 
 /*
 Execute received actions
 */
 bool MyExecuteActions(Ptr<OpenGymDataContainer> action)
 {
-  Ptr<OpenGymDiscreteContainer> discrete = DynamicCast<OpenGymDiscreteContainer>(action);
+  //Ptr<OpenGymDiscreteContainer> discrete = DynamicCast<OpenGymDiscreteContainer>(action);
   NS_LOG_UNCOND ("MyExecuteActions: " << action);
+  Ptr<OpenGymBoxContainer<uint32_t> > cont = DynamicCast<OpenGymBoxContainer<uint32_t> >(action);
+  
+  std::vector<uint32_t> actions = cont->GetData();
+   
+  uint32_t nodeNum = NodeList::GetNNodes ();
+  for (uint32_t i=0; i<nodeNum; i++)
+  {
+    Ptr<Node> node = NodeList::GetNode(i);
+    uint32_t txPower = actions.at(i);
+    //NS_LOG_UNCOND ("Setting power to: " << txPower);
+    SetTxPower(node,txPower, txPower*10);
+  } 
+ 
+ 
   return true;
 }
 
@@ -349,6 +377,7 @@ int main (int argc, char *argv[])
     three_distance = 20.0;
     source_node = 2;
     destiny_node = 3;
+    realsent =0;
 
     uint32_t stopTime = numPackets*interval+1;
 
