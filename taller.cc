@@ -257,8 +257,8 @@ Collect observations
 Ptr<OpenGymDataContainer> MyGetObservation(void)
 {
   uint32_t nodeNum = NodeList::GetNNodes();;
-  uint32_t low = 0.0;
-  uint32_t high = 100.0;
+  //uint32_t low = 0.0;
+  //uint32_t high = 3000.0;
   Ptr<UniformRandomVariable> rngInt = CreateObject<UniformRandomVariable> ();
 
   std::vector<uint32_t> shape = {nodeNum,};
@@ -268,8 +268,8 @@ Ptr<OpenGymDataContainer> MyGetObservation(void)
   for (NodeList::Iterator i = NodeList::Begin (); i != NodeList::End (); ++i) {
     Ptr<Node> node = *i;
     Ptr<WifiMacQueue> queue = GetQueue (node);
-    //uint32_t value = queue->GetNPackets();
-    uint32_t value = rngInt->GetInteger(low, high);
+    uint32_t value = queue->GetNPackets();
+    //uint32_t value = rngInt->GetInteger(low, high);
     box->AddValue(value); 
   }
 
@@ -303,13 +303,13 @@ std::string MyGetExtraInfo(void)
   return myInfo;
 }
 
-void SetTxPower (Ptr<Node> node, double txp, double txgain)
+void SetTxPower (Ptr<Node> node, double txpower, double txgain)
 {
   Ptr<NetDevice> device = node->GetDevice (0);
   Ptr<WifiNetDevice> wifiDevice = DynamicCast<WifiNetDevice> (device);
   Ptr<YansWifiPhy> phy = DynamicCast<YansWifiPhy>(wifiDevice->GetPhy());
-  phy->SetTxPowerStart(txp);
-  phy->SetTxPowerEnd(txp);
+  phy->SetTxPowerStart(txpower);
+  phy->SetTxPowerEnd(txpower);
 
   phy->SetTxGain(txgain);
   phy->SetRxGain(txgain);
@@ -521,7 +521,7 @@ int main (int argc, char *argv[])
   //union con la red principal
   newNodesNetTwo.Create (numNodesNetTwo - 1);
   // Creacion del contenedor de nodos para la red
-  NodeContainer secondNodeContainer (mainNodeContainer.Get (mainTwoAttachmentIndex), newNodesNetTwo);
+  NodeContainer secondNodeContainer (mainNodeContainer.Get (6), newNodesNetTwo);
   NS_LOG_INFO("TWO: "<< secondNodeContainer.GetN() <<" nodes created");
 
   //Intalacion de dispositivos de red wifi en modo adhoc, capa fisica y capa mac a los nodos
@@ -740,14 +740,14 @@ int main (int argc, char *argv[])
   openGym->SetGetGameOverCb( MakeCallback (&MyGetGameOver) );
   openGym->SetGetObservationCb( MakeCallback (&MyGetObservation) );
   openGym->SetGetRewardCb( MakeCallback (&MyGetReward) );
-  openGym->SetGetExtraInfoCb( MakeCallback (&MyGetExtraInfo) );
+  //openGym->SetGetExtraInfoCb( MakeCallback (&MyGetExtraInfo) );
   openGym->SetExecuteActionsCb( MakeCallback (&MyExecuteActions) );
   //Simulator::Schedule (Seconds(0.0), &ScheduleNextStateRead, envStepTime, openGym);
   //end openai gym
   
   Ptr<Node> id_source = secondNodeContainer.Get (source_node);
   Ptr<Node> id_destiny = thirdNodeContainer.Get (destiny_node);
-  //Simulator::Schedule(Seconds(0.0),&SetColors,id_source,id_destiny);
+  //Simulator::Schedule(Seconds(0.0),id_source,id_destiny);
   //Pogramacion de inicio y final de la simulación
   Simulator::Schedule (Seconds(0.0), &ScheduleNextStateRead, envStepTime, openGym);
   Simulator::Schedule(Seconds(stopTime-0.1),&Simulation_Results);
