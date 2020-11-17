@@ -194,7 +194,7 @@ Ptr<OpenGymSpace> MyGetObservationSpace(void)
   std::vector<uint32_t> shape = {nodeNum,};
   std::string dtype = TypeNameGet<uint32_t> ();
   Ptr<OpenGymBoxSpace> space = CreateObject<OpenGymBoxSpace> (low, high, shape, dtype);
-  NS_LOG_UNCOND ("MyGetObservationSpace: " << space);
+  //NS_LOG_UNCOND ("MyGetObservationSpace: " << space);
   return space;
 }
 
@@ -223,7 +223,7 @@ bool MyGetGameOver(void)
   //bool test = false;
   static float stepCounter = 0.0;
   stepCounter += 1;
-  if (stepCounter == 300) {
+  if (stepCounter == numPackets*10) { //300
       isGameOver = true;
        NS_LOG_UNCOND ("MyGetGameOver: " << isGameOver);
        NS_LOG_UNCOND ("********Game over. END OF SIMULATION******");
@@ -314,7 +314,7 @@ void SetTxPower (Ptr<Node> node, double txpower, double txgain)
   phy->SetTxGain(txgain);
   phy->SetRxGain(txgain);
   
-  phy->SetChannelWidth(160); 
+  //phy->SetChannelWidth(160); 
  
 }
 
@@ -335,7 +335,7 @@ bool MyExecuteActions(Ptr<OpenGymDataContainer> action)
     Ptr<Node> node = NodeList::GetNode(i);
     uint32_t txPower = actions.at(i);
     //NS_LOG_UNCOND ("Setting power to: " << txPower);
-    SetTxPower(node,txPower, txPower*10);
+    SetTxPower(node,txPower, txPower*2);
   } 
  
  
@@ -747,11 +747,10 @@ int main (int argc, char *argv[])
   
   Ptr<Node> id_source = secondNodeContainer.Get (source_node);
   Ptr<Node> id_destiny = thirdNodeContainer.Get (destiny_node);
-  //Simulator::Schedule(Seconds(0.0),id_source,id_destiny);
   //Pogramacion de inicio y final de la simulación
   Simulator::Schedule (Seconds(0.0), &ScheduleNextStateRead, envStepTime, openGym);
   Simulator::Schedule(Seconds(stopTime-0.1),&Simulation_Results);
-  Simulator::Stop (Seconds (stopTime));
+  //Simulator::Stop (Seconds (stopTime));
     
   Simulator::Run ();
   Simulator::Destroy ();
