@@ -38,7 +38,7 @@ env.reset()
 
 ob_space = env.observation_space
 ac_space = env.action_space
-print("Observation space: ", ob_space,  ob_space.dtype)
+#print("Observation space: ", ob_space,  ob_space.dtype)
 print("Action space: ", ac_space, ac_space.dtype)
 
 stepIdx = 0
@@ -58,7 +58,7 @@ try:
 
             print("Step: ", stepIdx)
             obs, reward, done, info = env.step(action)
-            print("---obs, reward, done, info: ", obs, reward, done, info)
+            print("---reward, done, info: ", reward, done, info)
 
             if done:
                 stepIdx = 0
